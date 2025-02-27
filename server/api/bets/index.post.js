@@ -1,5 +1,5 @@
 // server/api/bets/index.post.js
-import { Bet, User, Event } from '../../models/database';
+import { Bet, User, Event, EventReferral, PendingCommission } from '../../models/database';
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event);
@@ -40,7 +40,36 @@ export default defineEventHandler(async (event) => {
       bet_amount,
       status: 'active',
     });
+    // افزایش total_pool در مدل Event
+    event.total_pool += bet_amount;
+    await event.save();
+    // بررسی کمیسیون سازنده رویداد (۲٪)
+    if (event.creator_id) {
+      await PendingCommission.create({
+        user_id: event.creator_id,
+        event_id,
+        bet_id: bet.id,
+        commission_type: 'creator',
+        amount: bet_amount * event.commission_creator, // ۲٪ از مبلغ شرط
+        status: 'pending',
+      });
+    }
 
+    // بررسی کمیسیون رفرال (۵٪)
+    const referral = await EventReferral.findOne({
+      where: { event_id, referred_id: user_id },
+    });
+
+    if (referral) {
+      await PendingCommission.create({
+        user_id: referral.referrer_id,
+        event_id,
+        bet_id: bet.id,
+        commission_type: 'referral',
+        amount: bet_amount * event.commission_referral, // ۵٪ از مبلغ شرط
+        status: 'pending',
+      });
+    }
     return { success: true, message: 'شرط‌بندی با موفقیت ثبت شد.', bet };
   } catch (error) {
     console.error('Error placing bet:', error);

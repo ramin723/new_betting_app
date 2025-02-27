@@ -1,11 +1,18 @@
 // server/api/events/[id]/index.get.js
-import { Event } from '../../../models/database';
+import { Event, Tag } from '../../../models/database';
 
 export default defineEventHandler(async (event) => {
   const eventId = event.context.params.id;
 
   try {
-    const eventData = await Event.findByPk(eventId);
+    const eventData = await Event.findByPk(eventId, {
+      include: [
+        {
+          model: Tag,
+          through: { attributes: [] }, // فقط اطلاعات تگ‌ها نمایش داده شود، بدون اطلاعات جدول واسط EventTag
+        },
+      ],
+    });
 
     if (!eventData) {
       throw createError({

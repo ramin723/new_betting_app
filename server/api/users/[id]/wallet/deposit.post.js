@@ -1,15 +1,24 @@
-// server/api/users/[id]/wallet/deposit.post.js
-import { User } from '../../../../models/database';
+import { User, WalletHistory } from '../../../../models/database';
 
 export default defineEventHandler(async (event) => {
   const userId = event.context.params.id;
   const body = await readBody(event);
   const { amount } = body;
 
+  // حداقل و حداکثر مقدار مجاز دپوزیت
+  const maxDepositLimit = 10000;
+
   if (!amount || amount <= 0) {
     throw createError({
       statusCode: 400,
       message: 'مقدار افزایش موجودی باید بیشتر از صفر باشد.',
+    });
+  }
+
+  if (amount > maxDepositLimit) {
+    throw createError({
+      statusCode: 400,
+      message: `حداکثر مقدار افزایش موجودی ${maxDepositLimit} واحد است.`,
     });
   }
 
@@ -23,10 +32,18 @@ export default defineEventHandler(async (event) => {
       });
     }
 
+    // افزایش موجودی
     user.balance += amount;
     await user.save();
 
-    return { success: true, message: 'موجودی با موفقیت افزایش یافت.', balance: user.balance };
+    // ثبت تراکنش در WalletHistory
+    await WalletHistory.create({
+      user_id: userId,
+      wallet_address: user.wallet_address || 'N/A',
+      status: 'deposit',
+    });
+
+    return { success: true, message: `موجودی ${amount} واحد افزایش یافت.`, balance: user.balance };
   } catch (error) {
     console.error('Error depositing to wallet:', error);
     throw createError({

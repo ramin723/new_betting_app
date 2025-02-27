@@ -1,15 +1,24 @@
-// server/api/users/[id]/wallet/withdraw.post.js
-import { User, Payment } from '../../../../models/database';
+import { User, Payment, WalletHistory } from '../../../../models/database';
 
 export default defineEventHandler(async (event) => {
   const userId = event.context.params.id;
   const body = await readBody(event);
   const { amount } = body;
 
+  // حداقل و حداکثر مقدار مجاز برداشت
+  const maxWithdrawLimit = 5000;
+
   if (!amount || amount <= 0) {
     throw createError({
       statusCode: 400,
       message: 'مقدار برداشت باید بیشتر از صفر باشد.',
+    });
+  }
+
+  if (amount > maxWithdrawLimit) {
+    throw createError({
+      statusCode: 400,
+      message: `حداکثر مقدار برداشت ${maxWithdrawLimit} واحد است.`,
     });
   }
 
@@ -30,17 +39,26 @@ export default defineEventHandler(async (event) => {
       });
     }
 
+    // کاهش موجودی کاربر (اما تا تأیید نهایی هنوز از کیف پول خارج نشده)
     user.balance -= amount;
     await user.save();
 
-    await Payment.create({
+    // ثبت درخواست برداشت در Payment
+    const payment = await Payment.create({
       user_id: userId,
       amount,
       method: 'withdraw',
       status: 'pending',
     });
 
-    return { success: true, message: 'برداشت با موفقیت ثبت شد. منتظر تایید مدیریت باشید.', balance: user.balance };
+    // ثبت تراکنش در WalletHistory
+    await WalletHistory.create({
+      user_id: userId,
+      wallet_address: user.wallet_address || 'N/A',
+      status: 'withdraw_pending',
+    });
+
+    return { success: true, message: 'برداشت با موفقیت ثبت شد. منتظر تایید مدیریت باشید.', balance: user.balance, payment_id: payment.id };
   } catch (error) {
     console.error('Error withdrawing from wallet:', error);
     throw createError({
