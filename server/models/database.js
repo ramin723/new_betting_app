@@ -1,16 +1,20 @@
 // server/models/database.js
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { Sequelize, DataTypes } from 'sequelize';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-import { Sequelize, DataTypes } from 'sequelize';
+
+const dbPath = path.join(__dirname, '../../database.sqlite');
+console.log('📁 Database path:', dbPath);
 
 // اتصال به پایگاه داده
 const sequelize = new Sequelize({
     dialect: 'sqlite',
-    storage: path.join(__dirname, '../../database.sqlite'),
-    logging: false,
-  });
+    storage: dbPath,
+    logging: true, // فعال کردن لاگ‌ها برای دیباگ
+});
 
 // =========================
 // 1) مدل User
@@ -21,9 +25,30 @@ const User = sequelize.define('User', {
     allowNull: false,
     unique: true,
   },
+  telegram_id: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    unique: true,
+  },
+  email: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    unique: true,
+    validate: {
+      isEmail: true
+    }
+  },
+  first_name: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  last_name: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
   password: {
     type: DataTypes.STRING,
-    allowNull: false,
+    allowNull: true,
   },
   balance: {
     type: DataTypes.FLOAT,
@@ -63,46 +88,80 @@ const Event = sequelize.define('Event', {
       type: DataTypes.TEXT,
       allowNull: true,
     },
-    option_1: {
-      type: DataTypes.STRING,
-      allowNull: true,
+    event_type: {
+      type: DataTypes.ENUM('yes_no', 'winner', 'custom'),
+      allowNull: false,
+      defaultValue: 'yes_no',
     },
-    option_2: {
+    question: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: false,
+    },
+    result_time: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      comment: 'زمان مشخص شدن نتیجه رویداد',
+    },
+    betting_deadline: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      comment: 'مهلت شرط‌بندی',
     },
     start_time: {
       type: DataTypes.DATE,
-      allowNull: false,
+      allowNull: true,
+      comment: 'زمان شروع نمایش رویداد در سایت',
     },
     end_time: {
       type: DataTypes.DATE,
       allowNull: true,
+      comment: 'زمان پایان نمایش رویداد در سایت',
+    },
+    reference_event: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: 'رویداد مرجع (مثلاً نام مسابقه یا جشنواره)',
+    },
+    reference_link: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: 'لینک مرجع برای اعتبارسنجی',
     },
     status: {
-      type: DataTypes.STRING,
-      defaultValue: 'active',
+      type: DataTypes.ENUM('draft', 'pending', 'active', 'closed', 'cancelled'),
+      defaultValue: 'draft',
     },
-// چه کسی این رویداد را ساخته (می‌تواند null باشد اگر ادمین ساخته)
     creator_id: {
       type: DataTypes.INTEGER,
       allowNull: true,
     },
-// مجموع مبالغ شرط‌بندی (اختیاری)
+    admin_note: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      comment: 'یادداشت ادمین برای رد یا تایید رویداد',
+    },
     total_pool: {
       type: DataTypes.FLOAT,
       defaultValue: 0,
     },
-// درصد کمیسیون سازنده
     commission_creator: {
       type: DataTypes.FLOAT,
       defaultValue: 0.02,
     },
-// درصد کمیسیون رفرال
     commission_referral: {
       type: DataTypes.FLOAT,
       defaultValue: 0.05,
     },
+    is_featured: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      comment: 'آیا رویداد ویژه است',
+    },
+    template_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      comment: 'اگر از یک قالب استفاده شده باشد',
+    }
 });
   
 
@@ -110,6 +169,11 @@ const Event = sequelize.define('Event', {
 // 3) مدل Bet
 // =========================
 const Bet = sequelize.define('Bet', {
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true
+  },
   user_id: {
     type: DataTypes.INTEGER,
     allowNull: false,
@@ -118,8 +182,8 @@ const Bet = sequelize.define('Bet', {
     type: DataTypes.INTEGER,
     allowNull: false,
   },
-  bet_option: {
-    type: DataTypes.STRING,
+  option_id: {
+    type: DataTypes.INTEGER,
     allowNull: false,
   },
   bet_amount: {
@@ -127,9 +191,32 @@ const Bet = sequelize.define('Bet', {
     allowNull: false,
   },
   status: {
-    type: DataTypes.STRING,
+    type: DataTypes.ENUM('active', 'won', 'lost', 'cancelled'),
     defaultValue: 'active',
   },
+  potential_win_amount: {
+    type: DataTypes.FLOAT,
+    allowNull: false,
+  }
+}, {
+  tableName: 'bets',
+  timestamps: true,
+  createdAt: 'created_at',
+  updatedAt: 'updated_at',
+  indexes: [
+    {
+      fields: ['user_id']
+    },
+    {
+      fields: ['event_id']
+    },
+    {
+      fields: ['option_id']
+    },
+    {
+      fields: ['status']
+    }
+  ]
 });
 
 // =========================
@@ -158,18 +245,104 @@ const Payment = sequelize.define('Payment', {
 // 5) مدل WalletHistory
 // =========================
 const WalletHistory = sequelize.define('WalletHistory', {
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true
+  },
   user_id: {
     type: DataTypes.INTEGER,
     allowNull: false,
+    references: {
+      model: 'users',
+      key: 'id'
+    }
   },
-  wallet_address: {
-    type: DataTypes.STRING,
-    allowNull: false,
+  type: {
+    type: DataTypes.ENUM(
+      'deposit',      // واریز
+      'withdraw',     // برداشت
+      'bet',         // شرط‌بندی
+      'win',         // برد
+      'commission',  // کمیسیون
+      'refund'      // بازگشت پول
+    ),
+    allowNull: false
   },
   status: {
-    type: DataTypes.STRING,
-    defaultValue: 'active',
+    type: DataTypes.ENUM(
+      'pending',    // در انتظار
+      'completed',  // تکمیل شده
+      'failed',     // ناموفق
+      'cancelled'   // لغو شده
+    ),
+    defaultValue: 'pending'
   },
+  amount: {
+    type: DataTypes.DECIMAL(24, 9),
+    allowNull: false
+  },
+  old_balance: {
+    type: DataTypes.DECIMAL(24, 9),
+    allowNull: false
+  },
+  new_balance: {
+    type: DataTypes.DECIMAL(24, 9),
+    allowNull: false
+  },
+  wallet_address: {
+    type: DataTypes.STRING(48),
+    allowNull: true
+  },
+  description: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  event_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'events',
+      key: 'id'
+    }
+  },
+  bet_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'bets',
+      key: 'id'
+    }
+  },
+  metadata: {
+    type: DataTypes.JSON,
+    allowNull: true
+  }
+}, {
+  tableName: 'wallet_histories',
+  timestamps: true,
+  createdAt: 'created_at',
+  updatedAt: 'updated_at',
+  indexes: [
+    {
+      fields: ['user_id']
+    },
+    {
+      fields: ['type']
+    },
+    {
+      fields: ['status']
+    },
+    {
+      fields: ['event_id']
+    },
+    {
+      fields: ['bet_id']
+    },
+    {
+      fields: ['created_at']
+    }
+  ]
 });
 
 // =========================
@@ -238,33 +411,186 @@ const Tag = sequelize.define('Tag', {
   parent_id: {
     type: DataTypes.INTEGER,
     allowNull: true,
-    references: {
-      model: 'Tags', // باید نام جدول دیتابیس باشد
-      key: 'id',
-    },
-    onDelete: 'CASCADE', // اگر تگ والد حذف شود، زیرمجموعه‌ها هم حذف شوند
   },
   status: {
     type: DataTypes.ENUM('pending', 'approved'),
     defaultValue: 'pending',
+  }
+}, {
+  tableName: 'Tags'
+});
+
+// تعریف رابطه self-referential برای تگ‌ها
+Tag.belongsTo(Tag, { as: 'parent', foreignKey: 'parent_id' });
+Tag.hasMany(Tag, { as: 'children', foreignKey: 'parent_id' });
+
+// =========================
+// 9) مدل Option
+// =========================
+const Option = sequelize.define('Option', {
+  event_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
   },
+  text: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  value: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  odds: {
+    type: DataTypes.FLOAT,
+    allowNull: false,
+    defaultValue: 1,
+  },
+  total_bets: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+  },
+  total_amount: {
+    type: DataTypes.FLOAT,
+    defaultValue: 0,
+  },
+  is_winner: {
+    type: DataTypes.BOOLEAN,
+    allowNull: true,
+  },
+  order: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+  }
 });
 
 // =========================
-// 9) مدل EventTag
+// روابط بین مدل‌ها
 // =========================
-const EventTag = sequelize.define('EventTag', {
-  event_id: { type: DataTypes.INTEGER, allowNull: false, references: { model: 'Events', key: 'id' } },
-  tag_id: { type: DataTypes.INTEGER, allowNull: false, references: { model: 'Tags', key: 'id' } },
-}, { timestamps: false });
+Event.hasMany(Option, { as: 'Options', foreignKey: 'event_id' });
+Option.belongsTo(Event, { foreignKey: 'event_id' });
+
+Option.hasMany(Bet, { foreignKey: 'option_id' });
+Bet.belongsTo(Option, { foreignKey: 'option_id' });
 
 // =========================
-// 10) مدل UserPreference
+// 10) مدل EventTag
+// =========================
+const EventTag = sequelize.define('EventTag', {
+  event_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+  },
+  tag_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+  }
+});
+
+// =========================
+// 11) مدل UserPreference
 // =========================
 const UserPreference = sequelize.define('UserPreference', {
-  user_id: { type: DataTypes.INTEGER, allowNull: false, references: { model: 'Users', key: 'id' } },
-  tag_id: { type: DataTypes.INTEGER, allowNull: false, references: { model: 'Tags', key: 'id' } },
-}, { timestamps: false });
+  user_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+  },
+  tag_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+  },
+  preferred_tags: {
+    type: DataTypes.JSON,
+    allowNull: true,
+  },
+  notification_settings: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: {
+      email: true,
+      push: true
+    }
+  }
+});
+
+// =========================
+// مدل Transaction
+// =========================
+const Transaction = sequelize.define('Transaction', {
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true
+  },
+  wallet_history_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'WalletHistory',
+      key: 'id'
+    }
+  },
+  tx_hash: {
+    type: DataTypes.STRING(66),
+    allowNull: false,
+    unique: true
+  },
+  block_number: {
+    type: DataTypes.BIGINT,
+    allowNull: true
+  },
+  confirmation_count: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0
+  },
+  ton_amount: {
+    type: DataTypes.DECIMAL(24, 9),
+    allowNull: false
+  },
+  usd_amount: {
+    type: DataTypes.DECIMAL(12, 2),
+    allowNull: true
+  },
+  sender_address: {
+    type: DataTypes.STRING(48),
+    allowNull: false
+  },
+  receiver_address: {
+    type: DataTypes.STRING(48),
+    allowNull: false
+  },
+  status: {
+    type: DataTypes.ENUM('pending', 'confirmed', 'failed'),
+    defaultValue: 'pending'
+  },
+  raw_data: {
+    type: DataTypes.JSON,
+    allowNull: true
+  },
+  error_message: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  }
+}, {
+  tableName: 'transactions',
+  timestamps: true,
+  createdAt: 'created_at',
+  updatedAt: 'updated_at',
+  indexes: [
+    {
+      unique: true,
+      fields: ['tx_hash']
+    },
+    {
+      fields: ['wallet_history_id']
+    },
+    {
+      fields: ['status']
+    },
+    {
+      fields: ['block_number']
+    }
+  ]
+});
 
 // =========================
 // تعریف ارتباطات
@@ -305,7 +631,7 @@ Bet.hasMany(PendingCommission, { foreignKey: 'bet_id' });
 PendingCommission.belongsTo(Bet, { foreignKey: 'bet_id' });
 
 // 8) افزودن رابطه‌ی سازنده رویداد (creator)
-// اگر در مدل Event، فیلد creator_id را تعریف کرده‌ایم:
+// این رابطه را نگه می‌داریم چون اول تعریف شده
 Event.belongsTo(User, { foreignKey: 'creator_id', as: 'creator' });
 User.hasMany(Event, { foreignKey: 'creator_id', as: 'createdEvents' });
 
@@ -328,9 +654,50 @@ Tag.belongsToMany(Event, { through: EventTag, foreignKey: 'tag_id' });
 // ارتباط User و Tag از طریق UserPreference
 User.belongsToMany(Tag, { through: UserPreference, foreignKey: 'user_id' });
 Tag.belongsToMany(User, { through: UserPreference, foreignKey: 'tag_id' });
-Tag.belongsTo(Tag, { as: 'parent', foreignKey: 'parent_id' });
-Tag.hasMany(Tag, { as: 'children', foreignKey: 'parent_id' });
 
+// =========================
+// 11) مدل EventTemplate
+// =========================
+const EventTemplate = sequelize.define('EventTemplate', {
+  id: {
+    type: DataTypes.INTEGER,
+    autoIncrement: true,
+    primaryKey: true,
+  },
+  name: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    comment: 'نام قالب',
+  },
+  type: {
+    type: DataTypes.ENUM('yes_no', 'winner', 'custom'),
+    allowNull: false,
+  },
+  question_template: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    comment: 'قالب سوال با متغیرها مثل {date} یا {team}',
+  },
+  default_deadline_hours: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 24,
+    comment: 'فاصله پیش‌فرض مهلت شرط‌بندی از زمان نتیجه (ساعت)',
+  },
+  required_fields: {
+    type: DataTypes.JSON,
+    allowNull: false,
+    comment: 'فیلدهای مورد نیاز برای تکمیل قالب',
+  },
+  is_active: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true,
+  }
+});
+
+// رابطه بین Event و EventTemplate
+Event.belongsTo(EventTemplate, { foreignKey: 'template_id', as: 'template' });
+EventTemplate.hasMany(Event, { foreignKey: 'template_id', as: 'events' });
 
 // =========================
 // خروجی ماژول
@@ -346,5 +713,8 @@ export {
   EventReferral,
   Tag,
   EventTag,
-  UserPreference
+  UserPreference,
+  Option,
+  EventTemplate,
+  Transaction
 };

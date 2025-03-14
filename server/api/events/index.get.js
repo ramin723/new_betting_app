@@ -1,56 +1,163 @@
 // server/api/events/index.get.js
 import { Op } from 'sequelize';
-import { Event, Tag, EventTag } from '../../models/database';
+import { Event, Tag, Option, User, EventTemplate } from '../../models/database';
+import { defineEventHandler, createError, getCookie } from 'h3';
+import { useRuntimeConfig } from '#imports';
 
 export default defineEventHandler(async (event) => {
+  console.log('🔵 [/api/events] Fetching events...');
+  const config = useRuntimeConfig();
   const query = getQuery(event);
-  const { sort, all, tags } = query;
+  const { 
+    sort, 
+    all, 
+    tags,
+    type,
+    status,
+    creator_id,
+    template_id,
+    search,
+    from_date,
+    to_date,
+    featured_only,
+    include_expired
+  } = query;
 
   try {
     // تنظیم شرط where
     const whereClause = {};
 
-    // اگر all=true نیامده باشد، فقط رویدادهای active را نمایش بده
-    if (!all) {
+    // فیلتر وضعیت
+    if (status) {
+      whereClause.status = status;
+    } else if (!all) {
+      // اگر all=true نیامده باشد و status هم مشخص نشده، فقط رویدادهای active را نمایش بده
       whereClause.status = 'active';
     }
 
-    // تنظیم مرتب‌سازی پیش‌فرض (start_time ASC)
-    let order = [['start_time', 'ASC']];
-
-    // بر اساس sort
-    if (sort === 'newest') {
-      order = [['createdAt', 'DESC']];
-    } else if (sort === 'popular') {
-      // فرض کنیم محبوبیت بر اساس total_pool است
-      order = [['total_pool', 'DESC']];
+    // فیلتر نوع رویداد
+    if (type) {
+      whereClause.event_type = type;
     }
 
-    // **فیلتر کردن بر اساس چند تگ (مثلاً tags=Sport,Politics,France)**
-    let eventQuery = {
-      where: whereClause,
-      order,
-    };
+    // فیلتر سازنده
+    if (creator_id) {
+      whereClause.creator_id = creator_id;
+    }
 
-    if (tags) {
-      const tagList = tags.split(','); // تبدیل مقدار `tags` به آرایه‌ای از تگ‌ها
+    // فیلتر قالب
+    if (template_id) {
+      whereClause.template_id = template_id;
+    }
 
-      eventQuery.include = [
-        {
-          model: Tag,
-          where: {
-            name: { [Op.in]: tagList }, // هر رویدادی که حداقل یکی از این تگ‌ها را داشته باشد
-          },
-          through: { attributes: [] },
-        },
+    // فیلتر رویدادهای ویژه
+    if (featured_only === 'true') {
+      whereClause.is_featured = true;
+    }
+
+    // جستجو در عنوان و توضیحات
+    if (search) {
+      whereClause[Op.or] = [
+        { title: { [Op.like]: `%${search}%` } },
+        { description: { [Op.like]: `%${search}%` } },
+        { question: { [Op.like]: `%${search}%` } }
       ];
     }
 
-    const events = await Event.findAll(eventQuery);
+    // فیلتر تاریخ
+    if (from_date || to_date) {
+      whereClause[Op.and] = [];
+      
+      if (from_date) {
+        whereClause[Op.and].push({ result_time: { [Op.gte]: new Date(from_date) } });
+      }
+      
+      if (to_date) {
+        whereClause[Op.and].push({ result_time: { [Op.lte]: new Date(to_date) } });
+      }
+    }
 
-    return { success: true, events };
+    // فیلتر رویدادهای منقضی نشده
+    if (include_expired !== 'true') {
+      if (!whereClause[Op.and]) {
+        whereClause[Op.and] = [];
+      }
+      whereClause[Op.and].push({ betting_deadline: { [Op.gt]: new Date() } });
+    }
+
+    // تنظیم مرتب‌سازی
+    let order = [['result_time', 'ASC']];
+
+    if (sort === 'newest') {
+      order = [['createdAt', 'DESC']];
+    } else if (sort === 'deadline') {
+      order = [['betting_deadline', 'ASC']];
+    } else if (sort === 'popular') {
+      order = [['total_pool', 'DESC']];
+    }
+
+    // تنظیم query نهایی
+    let eventQuery = {
+      where: whereClause,
+      order,
+      include: [
+        {
+          model: Tag,
+          through: { attributes: [] },
+        },
+        {
+          model: Option,
+          as: 'Options',
+          attributes: ['id', 'text', 'value', 'odds', 'total_bets', 'is_winner', 'order'],
+        },
+        {
+          model: User,
+          as: 'creator',
+          attributes: ['id', 'username', 'role'],
+        },
+        {
+          model: EventTemplate,
+          as: 'template',
+          attributes: ['id', 'name', 'type'],
+        }
+      ],
+    };
+
+    // فیلتر تگ‌ها
+    if (tags) {
+      const tagList = tags.split(',');
+      eventQuery.include[0].where = {
+        name: { [Op.in]: tagList },
+      };
+    }
+
+    console.log('🟡 [/api/events] Executing query with:', {
+      whereClause,
+      order,
+      tags: tags ? tags.split(',') : []
+    });
+
+    const events = await Event.findAll(eventQuery);
+    console.log('🟢 [/api/events] Found', events.length, 'events');
+
+    return { 
+      success: true, 
+      events,
+      filters: {
+        type,
+        status,
+        creator_id,
+        template_id,
+        search,
+        from_date,
+        to_date,
+        featured_only,
+        include_expired,
+        tags
+      }
+    };
   } catch (error) {
-    console.error('Error fetching events:', error);
+    console.error('🔴 [/api/events] Error fetching events:', error);
     throw createError({
       statusCode: 500,
       message: 'خطا در دریافت لیست رویدادها.',

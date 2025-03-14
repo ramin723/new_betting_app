@@ -1,0 +1,18 @@
+:root {
+    /* 🎨 پالت رنگی اصلی */
+    --primary-color: #ff5733;
+    --secondary-color: #ff7eb3;
+    --background-color: #f8f9fa;
+    --card-bg: white;
+    --text-color: #333;
+    --border-radius: 12px;
+  
+    /* 📏 سایز فونت */
+    --font-small: 12px;
+    --font-medium: 14px;
+    --font-large: 18px;
+  
+    /* 🌟 افکت‌های ظریف */
+    --box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+  }
+  
