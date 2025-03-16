@@ -10,7 +10,7 @@ import type {
 } from '~/types/admin'
 import { useSecurity } from './useSecurity'
 import { generateTOTP, verifyTOTP } from '~/utils/totp'
-import { useNuxtApp, useRuntimeConfig } from '#imports'
+import { useNuxtApp, useRuntimeConfig, useFetch, navigateTo } from '#imports'
 
 interface AuthMeResponse {
   success: boolean

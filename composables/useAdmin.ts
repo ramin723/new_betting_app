@@ -1,4 +1,5 @@
 import type { Event, User, Transaction, Stats } from '~/types/admin'
+import { useNuxtApp } from '#imports'
 
 export const useAdmin = () => {
   const { $supabase } = useNuxtApp()

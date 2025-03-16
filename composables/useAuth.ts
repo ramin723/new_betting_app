@@ -1,5 +1,5 @@
 // @ts-ignore
-import { useAuth as useSidebaseAuth } from '@sidebase/nuxt-auth'
+import { useAuth as useSidebaseAuth } from '#imports'
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 

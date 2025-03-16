@@ -1,0 +1,45 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "lib": ["ESNext"],
+    "esModuleInterop": true,
+    "strict": true,
+    "strictNullChecks": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "skipDefaultLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "~/*": ["*"],
+      "@/*": ["*"],
+      "@server/*": ["./server/*"],
+      "@plugins/*": ["./server/plugins/*"],
+      "@models/*": ["./server/models/*"],
+      "#imports": ["./.nuxt/imports"],
+      "#auth": ["./.nuxt/auth"],
+      "#app": ["./node_modules/nuxt/dist/app"],
+      "#nitro": ["./.nuxt/nitro"],
+      "#head": ["./node_modules/@unhead/vue"]
+    },
+    "types": [
+      "@types/node",
+      "@types/sequelize",
+      "@types/bcryptjs",
+      "@types/jsonwebtoken"
+    ]
+  },
+  "include": [
+    "server/**/*.ts",
+    "server/**/*.d.ts",
+    ".nuxt/imports.d.ts",
+    ".nuxt/auth.d.ts",
+    ".nuxt/nitro.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    ".nuxt/dist",
+    "dist"
+  ]
+} 

@@ -51,6 +51,13 @@ export default defineNuxtConfig({
     dirs: ['composables', 'composables/*/index.{ts,js,mjs,mts}']
   },
 
+  // تنظیمات alias برای import‌ها
+  alias: {
+    '@server': '~/server',
+    '@plugins': '~/server/plugins',
+    '@models': '~/server/models'
+  },
+
   compatibilityDate: '2025-03-09',
 
   supabase: {

@@ -1,4 +1,23 @@
 {
   // https://nuxt.com/docs/guide/concepts/typescript
-  "extends": "./.nuxt/tsconfig.json"
+  "extends": "./.nuxt/tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "~/*": ["./*"],
+      "@/*": ["./*"],
+      "#imports": ["./.nuxt/imports"],
+      "#auth": ["./.nuxt/auth"],
+      "#app": ["./node_modules/nuxt/dist/app"],
+      "#nitro": ["./.nuxt/nitro"],
+      "#head": ["./node_modules/@unhead/vue"]
+    }
+  },
+  "include": [
+    "server/**/*.ts",
+    "server/**/*.d.ts",
+    ".nuxt/imports.d.ts",
+    ".nuxt/auth.d.ts",
+    ".nuxt/nitro.d.ts"
+  ]
 }
