@@ -1,23 +1,14 @@
 import { Sequelize } from 'sequelize'
 import { DB_CONFIG } from '../config/database'
-import { defineNuxtPlugin } from '#imports'
+import { defineNitroPlugin } from 'nitropack/runtime/plugin'
+import { User } from '../models/User'
+import { Event } from '../models/Event'
+import { Bet } from '../models/Bet'
+import { WalletHistory } from '../models/WalletHistory'
+import { Notification } from '../models/Notification'
 
 // تنظیمات اتصال به دیتابیس
-export const sequelize = new Sequelize({
-  dialect: 'sqlite',
-  storage: DB_CONFIG.storage,
-  logging: (msg) => console.log('📝 Sequelize:', msg),
-  define: {
-    underscored: true,
-    timestamps: true,
-  },
-  pool: {
-    max: 5,
-    min: 0,
-    acquire: 30000,
-    idle: 10000
-  }
-})
+export const sequelize = new Sequelize(DB_CONFIG.url, DB_CONFIG.options)
 
 // تست اتصال به دیتابیس
 export const testConnection = async (): Promise<void> => {
@@ -37,6 +28,22 @@ export const syncModels = async (force: boolean = false): Promise<void> => {
     console.log('⏳ Starting database sync...')
     console.log('⏳ Syncing with options:', { force, alter: false })
     
+    // تعریف روابط بین مدل‌ها
+    User.hasMany(Event, { foreignKey: 'creator_id' })
+    Event.belongsTo(User, { foreignKey: 'creator_id' })
+    
+    User.hasMany(Bet, { foreignKey: 'user_id' })
+    Bet.belongsTo(User, { foreignKey: 'user_id' })
+    
+    Event.hasMany(Bet, { foreignKey: 'event_id' })
+    Bet.belongsTo(Event, { foreignKey: 'event_id' })
+    
+    User.hasMany(WalletHistory, { foreignKey: 'user_id' })
+    WalletHistory.belongsTo(User, { foreignKey: 'user_id' })
+    
+    User.hasMany(Notification, { foreignKey: 'user_id' })
+    Notification.belongsTo(User, { foreignKey: 'user_id' })
+    
     await sequelize.sync({ 
       force, // اگر true باشد، جداول را حذف و دوباره می‌سازد
       alter: false, // از تغییر ساختار جلوگیری می‌کند
@@ -54,7 +61,7 @@ export const syncModels = async (force: boolean = false): Promise<void> => {
 }
 
 // Nitro Plugin برای همگام‌سازی در شروع سرور
-export default defineNuxtPlugin(async () => {
+export default defineNitroPlugin(async (nitroApp) => {
   try {
     await testConnection()
     await syncModels(false) // همگام‌سازی با حفظ داده‌های موجود

@@ -12,9 +12,11 @@
     "lint:fix": "nuxi typecheck --fix"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.758.0",
+    "@aws-sdk/s3-request-presigner": "^3.758.0",
     "@heroicons/vue": "^2.2.0",
     "@nuxtjs/supabase": "^1.5.0",
-    "@sidebase/nuxt-auth": "^0.6.0-beta.5",
+    "@sidebase/nuxt-auth": "^0.10.1",
     "@supabase/supabase-js": "^2.49.1",
     "@types/bcryptjs": "^2.4.6",
     "@types/qrcode": "^1.5.5",
@@ -24,23 +26,30 @@
     "chart.js": "^4.4.8",
     "crypto-js": "^4.2.0",
     "framer-motion": "^12.4.7",
+    "h3": "^1.15.1",
+    "ioredis": "^5.6.0",
     "jsonwebtoken": "^9.0.2",
     "next-auth": "^4.21.1",
     "nuxt": "^3.15.2",
     "otplib": "^12.0.1",
+    "pg": "^8.14.1",
     "qrcode": "^1.5.4",
     "sequelize": "^6.37.6",
     "sqlite3": "^5.1.7",
     "uuid": "^9.0.0",
     "vue": "latest",
     "vue-router": "latest",
-    "ws": "^8.13.0"
+    "vue-toastification": "^2.0.0-rc.5",
+    "winston": "^3.17.0",
+    "ws": "^8.13.0",
+    "zod": "^3.24.2"
   },
   "devDependencies": {
     "@nuxtjs/tailwindcss": "^6.13.1",
     "@types/bcrypt": "^5.0.2",
     "@types/crypto-js": "^4.2.2",
     "@types/jsonwebtoken": "^9.0.9",
+    "typescript": "^5.8.2",
     "vue-tsc": "^2.1.10"
   }
 }

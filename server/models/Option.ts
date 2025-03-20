@@ -1,12 +1,17 @@
 import { Model, DataTypes, Sequelize } from 'sequelize'
-import type { OptionAttributes, OptionModel } from './types/OptionInterface'
+import type { 
+  OptionAttributes, 
+  OptionModel,
+  OptionCreationAttributes
+} from './types/OptionInterface'
 import { Event } from './Event'
+import { Bet } from './Bet'
 
 /**
  * مدل Option
  * مسئول نگهداری اطلاعات گزینه‌های شرط‌بندی
  */
-export class Option extends Model<OptionAttributes, OptionModel> implements OptionModel {
+export class Option extends Model<OptionAttributes, OptionCreationAttributes> implements OptionModel {
   public id!: number
   public event_id!: number
   public text!: string
@@ -14,7 +19,7 @@ export class Option extends Model<OptionAttributes, OptionModel> implements Opti
   public odds!: number
   public total_bets!: number
   public total_amount!: number
-  public is_winner?: boolean
+  public is_winner!: boolean
   public order!: number
   public readonly createdAt!: Date
   public readonly updatedAt!: Date
@@ -23,7 +28,19 @@ export class Option extends Model<OptionAttributes, OptionModel> implements Opti
    * دریافت رویداد مرتبط با گزینه
    */
   public async getEvent(): Promise<Event> {
-    return Event.findByPk(this.event_id) as Promise<Event>
+    const event = await Event.findByPk(this.event_id);
+    if (!event) {
+      throw new Error('Event not found');
+    }
+    return event;
+  }
+
+  public async getBets(): Promise<Bet[]> {
+    return Bet.findAll({
+      where: {
+        option_id: this.id
+      }
+    })
   }
 }
 
@@ -48,40 +65,39 @@ export const initOption = (sequelize: Sequelize): void => {
         type: DataTypes.STRING,
         allowNull: false,
         validate: {
-          len: [1, 100]
+          len: [1, 200]
         }
       },
       value: {
         type: DataTypes.STRING,
-        allowNull: false
+        allowNull: false,
+        validate: {
+          len: [1, 100]
+        }
       },
       odds: {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: false,
-        defaultValue: 1,
+        defaultValue: 1.00,
         validate: {
-          min: 1
+          min: 1.00,
+          max: 100.00
         }
       },
       total_bets: {
         type: DataTypes.INTEGER,
         allowNull: false,
-        defaultValue: 0,
-        validate: {
-          min: 0
-        }
+        defaultValue: 0
       },
       total_amount: {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: false,
-        defaultValue: 0,
-        validate: {
-          min: 0
-        }
+        defaultValue: 0
       },
       is_winner: {
         type: DataTypes.BOOLEAN,
-        allowNull: true
+        allowNull: false,
+        defaultValue: false
       },
       order: {
         type: DataTypes.INTEGER,
@@ -105,6 +121,9 @@ export const initOption = (sequelize: Sequelize): void => {
       indexes: [
         {
           fields: ['event_id']
+        },
+        {
+          fields: ['value']
         },
         {
           fields: ['is_winner']

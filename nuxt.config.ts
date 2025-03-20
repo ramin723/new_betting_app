@@ -1,3 +1,5 @@
+import { defineNuxtConfig } from 'nuxt/config';
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   devtools: { enabled: true },
@@ -7,7 +9,23 @@ export default defineNuxtConfig({
   // تنظیمات Nitro برای اجرای پروژه روی Node.js
   nitro: {
     preset: 'node-server',
-    plugins: ['~/server/plugins/sequelize.js']
+    plugins: [
+      '~/server/plugins/sequelize.js',
+      '~/server/middleware/validate',
+      '~/server/middleware/cache',
+      '~/server/middleware/logger',
+      '~/server/middleware/rateLimit'
+    ],
+    routeRules: {
+      '/api/**': {
+        cors: true,
+        headers: {
+          'Access-Control-Allow-Methods': 'GET,HEAD,PUT,PATCH,POST,DELETE',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+        }
+      }
+    }
   },
 
   // تنظیمات عمومی اپلیکیشن
@@ -41,6 +59,14 @@ export default defineNuxtConfig({
     '@nuxtjs/supabase',
     '@sidebase/nuxt-auth'
   ],
+
+  css: [
+    'vue-toastification/dist/index.css'
+  ],
+
+  build: {
+    transpile: ['vue-toastification']
+  },
 
   typescript: {
     strict: true,

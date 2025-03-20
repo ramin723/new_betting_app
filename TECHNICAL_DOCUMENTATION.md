@@ -427,10 +427,10 @@
    server/
    ├── models/
    │   ├── types/           # تعاریف TypeScript
-   │   ├── User.ts          # مدل کاربر
-   │   ├── Event.ts         # مدل رویداد
-   │   ├── Bet.ts           # مدل شرط
-   │   └── index.ts         # export مدل‌ها
+   │   │   ├── User.ts          # مدل کاربر
+   │   │   ├── Event.ts         # مدل رویداد
+   │   │   ├── Bet.ts           # مدل شرط
+   │   │   └── index.ts         # export مدل‌ها
    └── plugins/
        └── sequelize.ts     # تنظیمات Sequelize
    ```
@@ -532,3 +532,56 @@
 - حداکثر آیتم در صفحه: 50
 
 [ادامه مستندات در حال تکمیل...] 
+
+interface BetPlacement {
+    userId: number;
+    eventId: number;
+    optionId: number;
+    amount: number;
+    potentialWinAmount: number;
+} 
+
+async calculatePotentialWin(bet: BetPlacement): Promise<number> {
+    const option = await Option.findByPk(bet.optionId);
+    const event = await Event.findByPk(bet.eventId);
+    
+    // محاسبه مبلغ ناخالص
+    const grossWin = bet.amount * option.odds;
+    
+    // کسر کمیسیون‌ها
+    const creatorCommission = grossWin * event.commission_creator; // 2%
+    const referralCommission = grossWin * event.commission_referral; // 5%
+    
+    return grossWin - creatorCommission - referralCommission;
+} 
+
+async settleBets(eventId: number, winningOptionId: number) {
+    // تراکنش‌های پایگاه داده
+    await sequelize.transaction(async (t) => {
+        // 1. به‌روزرسانی وضعیت شرط‌ها
+        await Bet.update(
+            { status: 'won' },
+            { where: { eventId, optionId: winningOptionId } }
+        );
+        
+        // 2. پرداخت به برندگان
+        const winningBets = await Bet.findAll({
+            where: { eventId, optionId: winningOptionId }
+        });
+        
+        for (const bet of winningBets) {
+            // پرداخت به کیف پول داخلی
+            await WalletHistory.create({
+                userId: bet.userId,
+                amount: bet.potentialWinAmount,
+                type: 'win',
+                status: 'pending',
+                eventId,
+                betId: bet.id
+            });
+        }
+        
+        // 3. پرداخت کمیسیون‌ها
+        await payCommissions(eventId);
+    });
+} 

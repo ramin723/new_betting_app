@@ -1,9 +1,15 @@
 import { defineEventHandler, createError, getCookie } from 'h3'
 import jwt from 'jsonwebtoken'
-import { User, Event, Bet, WalletHistory } from '~/server/models/database'
+import { User } from '../models/User'
+import { Event } from '../models/Event'
+import { Bet } from '../models/Bet'
+import { WalletHistory } from '../models/WalletHistory'
 import { useRuntimeConfig } from '#imports'
-import type { UserModel, EventModel, BetModel, WalletHistoryModel } from '~/types/models'
-import { AUTH_CONSTANTS } from '../constants/auth'
+import type { UserModel } from '../models/types/UserInterface'
+import type { EventModel } from '../models/types/EventInterface'
+import type { BetModel } from '../models/types/BetInterface'
+import type { WalletHistoryModel } from '../models/types/WalletHistoryInterface'
+import { BET_STATUS } from '../constants/constants'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -19,7 +25,7 @@ export default defineEventHandler(async (event) => {
     }
 
     // بررسی اعتبار توکن
-    const decoded = jwt.verify(token, config.auth?.secret || AUTH_CONSTANTS.DEFAULT_JWT_SECRET) as { userId: number }
+    const decoded = jwt.verify(token, config.auth?.secret) as { userId: number }
     if (!decoded?.userId) {
       throw createError({
         statusCode: 401,
@@ -30,7 +36,7 @@ export default defineEventHandler(async (event) => {
     // دریافت اطلاعات کاربر
     const user = await User.findByPk(decoded.userId, {
       attributes: { exclude: ['password'] }
-    }) as UserModel
+    })
 
     if (!user) {
       throw createError({
@@ -42,33 +48,33 @@ export default defineEventHandler(async (event) => {
     // دریافت رویدادهای کاربر
     const events = await Event.findAll({
       where: { creator_id: user.id },
-      order: [['created_at', 'DESC']],
+      order: [['createdAt', 'DESC']],
       limit: 10
-    }) as EventModel[]
+    })
 
     // دریافت شرط‌های کاربر
     const bets = await Bet.findAll({
       where: { user_id: user.id },
-      order: [['created_at', 'DESC']],
+      order: [['createdAt', 'DESC']],
       limit: 10
-    }) as BetModel[]
+    })
 
     // دریافت تراکنش‌های کیف پول
     const transactions = await WalletHistory.findAll({
       where: { user_id: user.id },
-      order: [['created_at', 'DESC']],
+      order: [['createdAt', 'DESC']],
       limit: 10
-    }) as WalletHistoryModel[]
+    })
 
     // محاسبه آمار
     const stats = {
       total_events: events.length,
       total_bets: bets.length,
       total_transactions: transactions.length,
-      total_won: bets.filter(bet => bet.status === 'won').length,
-      total_lost: bets.filter(bet => bet.status === 'lost').length,
+      total_won: bets.filter(bet => bet.status === 'WIN').length,
+      total_lost: bets.filter(bet => bet.status === 'LOSS').length,
       win_rate: bets.length > 0 
-        ? (bets.filter(bet => bet.status === 'won').length / bets.length * 100).toFixed(2)
+        ? (bets.filter(bet => bet.status === 'WIN').length / bets.length * 100).toFixed(2)
         : 0
     }
 

@@ -4,39 +4,45 @@
 
 // کمسیون‌ها
 export const COMMISSIONS = {
-  CREATOR: 0.02, // 2% کمسیون سازنده رویداد
+  CREATOR: 0.03, // 3% کمسیون سازنده رویداد
   REFERRAL: 0.05, // 5% کمسیون دعوت
+  PLATFORM_MIN: 0.07, // 7% حداقل کمسیون پلتفرم
+  PLATFORM_MAX: 0.12, // 12% حداکثر کمسیون پلتفرم
+  TOTAL: 0.15, // 15% مجموع کل کمسیون
 } as const;
 
 // وضعیت‌های رویداد
 export const EVENT_STATUS = {
-  DRAFT: 'draft',
-  PENDING: 'pending',
-  ACTIVE: 'active',
-  CLOSED: 'closed',
-  CANCELLED: 'cancelled',
+  DRAFT: 'DRAFT',
+  ACTIVE: 'ACTIVE',
+  CANCELLED: 'CANCELLED',
+  COMPLETED: 'COMPLETED',
+  EXPIRED: 'EXPIRED'
 } as const;
 
 // نوع رویدادها
 export const EVENT_TYPES = {
-  YES_NO: 'yes_no',
-  WINNER: 'winner',
-  CUSTOM: 'custom',
+  SPORTS: 'SPORTS',
+  POLITICS: 'POLITICS',
+  ENTERTAINMENT: 'ENTERTAINMENT',
+  TECHNOLOGY: 'TECHNOLOGY',
+  OTHER: 'OTHER'
 } as const;
 
 // وضعیت شرط‌ها
 export const BET_STATUS = {
-  ACTIVE: 'active',
-  WON: 'won',
-  LOST: 'lost',
-  CANCELLED: 'cancelled',
+  PENDING: 'PENDING',
+  ACTIVE: 'ACTIVE',
+  WIN: 'WIN',
+  LOSS: 'LOSS',
+  CANCELLED: 'CANCELLED'
 } as const;
 
 // نقش‌های کاربری
 export const USER_ROLES = {
   USER: 'user',
   ADMIN: 'admin',
-  MODERATOR: 'moderator',
+  MODERATOR: 'moderator'
 } as const;
 
 // تنظیمات پایگاه داده
@@ -62,10 +68,10 @@ export const SECURITY = {
 
 // تنظیمات کیف پول
 export const WALLET = {
-  MIN_BET_AMOUNT: 0.1,
-  MAX_BET_AMOUNT: 1000,
-  MIN_WITHDRAWAL: 10,
-  MAX_WITHDRAWAL: 10000,
+  MIN_BET_AMOUNT: 1,
+  MAX_BET_AMOUNT: 1000000,
+  MIN_WITHDRAWAL: 100,
+  MAX_WITHDRAWAL: 1000000,
 } as const;
 
 // تنظیمات رویداد
@@ -103,4 +109,47 @@ export const API = {
     DEFAULT_LIMIT: 10,
     MAX_LIMIT: 50,
   },
+} as const;
+
+export const WALLET_HISTORY_TYPE = {
+  DEPOSIT: 'DEPOSIT',
+  WITHDRAW: 'WITHDRAW',
+  BET: 'BET',
+  WIN: 'WIN',
+  COMMISSION: 'COMMISSION',
+  REFUND: 'REFUND'
+} as const;
+
+export const WALLET_HISTORY_STATUS = {
+  PENDING: 'PENDING',
+  COMPLETED: 'COMPLETED',
+  FAILED: 'FAILED',
+  CANCELLED: 'CANCELLED'
+} as const;
+
+export const COMMISSION_RATES = {
+  CREATOR: 0.05, // 5%
+  REFERRAL: 0.02, // 2%
+  PLATFORM: 0.03 // 3%
+} as const;
+
+export const MIN_BET_AMOUNT = 1;
+export const MAX_BET_AMOUNT = 1000000;
+export const MIN_WITHDRAW_AMOUNT = 100;
+export const MAX_WITHDRAW_AMOUNT = 1000000;
+
+export const PAGINATION = {
+  DEFAULT_PAGE: 1,
+  DEFAULT_LIMIT: 10,
+  MAX_LIMIT: 100
+} as const;
+
+export const CACHE_TTL = {
+  SHORT: 60,    // 1 دقیقه
+  MEDIUM: 300,  // 5 دقیقه
+  LONG: 3600,   // 1 ساعت
+  EVENTS: 60,   // 1 دقیقه
+  USERS: 300,   // 5 دقیقه
+  BETS: 60,     // 1 دقیقه
+  WALLET: 300   // 5 دقیقه
 } as const; 

@@ -9,7 +9,7 @@ export interface EventAttributes {
   id: number
   title: string
   description?: string
-  event_type: typeof EVENT_TYPES[keyof typeof EVENT_TYPES]
+  event_type: EventType
   question: string
   result_time: Date
   betting_deadline: Date
@@ -17,31 +17,47 @@ export interface EventAttributes {
   end_time?: Date
   reference_event?: string
   reference_link?: string
-  status: typeof EVENT_STATUS[keyof typeof EVENT_STATUS]
+  status: EventStatus
   creator_id?: number
   admin_note?: string
   total_pool: number
   commission_creator: number
   commission_referral: number
+  platform_commission: number
   is_featured: boolean
   template_id?: number
   createdAt: Date
   updatedAt: Date
 }
 
-export interface EventModel extends Model<EventAttributes>, EventAttributes {
+export interface EventCreationAttributes extends Omit<EventAttributes, 'id' | 'createdAt' | 'updatedAt'> {
+  status: EventStatus
+  total_pool: number
+  commission_creator: number
+  commission_referral: number
+  platform_commission: number
+  is_featured: boolean
+}
+
+export interface EventModel extends Model<EventAttributes, EventCreationAttributes>, EventAttributes {
   calculatePotentialWinnings(betAmount: number, optionId: number): Promise<number>
   isActive(): boolean
   canAcceptBets(): boolean
   updateTotalPool(): Promise<void>
   getBets(): Promise<BetModel[]>
   getOptionBets(optionId: number): Promise<BetModel[]>
+  calculateCommissions(): Promise<{
+    creatorCommission: number
+    referralCommission: number
+    platformCommission: number
+  }>
+  calculateReferralBetsAmount(): Promise<number>
 }
 
 export interface CreateEventInput {
   title: string
   description?: string
-  event_type: typeof EVENT_TYPES[keyof typeof EVENT_TYPES]
+  event_type: EventType
   question: string
   result_time: Date
   betting_deadline: Date
@@ -56,7 +72,7 @@ export interface CreateEventInput {
 export interface UpdateEventInput {
   title?: string
   description?: string
-  event_type?: typeof EVENT_TYPES[keyof typeof EVENT_TYPES]
+  event_type?: EventType
   question?: string
   result_time?: Date
   betting_deadline?: Date
@@ -64,7 +80,7 @@ export interface UpdateEventInput {
   end_time?: Date
   reference_event?: string
   reference_link?: string
-  status?: typeof EVENT_STATUS[keyof typeof EVENT_STATUS]
+  status?: EventStatus
   admin_note?: string
   is_featured?: boolean
 }
@@ -73,7 +89,7 @@ export interface EventResponse {
   id: number
   title: string
   description?: string
-  event_type: typeof EVENT_TYPES[keyof typeof EVENT_TYPES]
+  event_type: EventType
   question: string
   result_time: Date
   betting_deadline: Date
@@ -81,7 +97,7 @@ export interface EventResponse {
   end_time?: Date
   reference_event?: string
   reference_link?: string
-  status: typeof EVENT_STATUS[keyof typeof EVENT_STATUS]
+  status: EventStatus
   creator_id?: number
   total_pool: number
   commission_creator: number

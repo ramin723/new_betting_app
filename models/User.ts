@@ -1,5 +1,6 @@
 import { Model, DataTypes } from 'sequelize'
 import { sequelize } from '../config/database'
+import type { UserRole } from '~/types/auth'
 
 class User extends Model {
   public id!: number
@@ -13,7 +14,7 @@ class User extends Model {
   public wallet_address?: string
   public isBlocked!: boolean
   public total_referral_earnings!: number
-  public role!: string
+  public role!: UserRole
   public readonly createdAt!: Date
   public readonly updatedAt!: Date
 }
@@ -73,7 +74,7 @@ User.init({
     defaultValue: 0
   },
   role: {
-    type: DataTypes.STRING,
+    type: DataTypes.ENUM('admin', 'user', 'moderator'),
     allowNull: false,
     defaultValue: 'user'
   }

@@ -1,3 +1,4 @@
+import { defineNuxtPlugin } from 'nuxt/app'
 import { useAdminAuth } from '~/composables/useAdminAuth'
 
 export default defineNuxtPlugin(async () => {

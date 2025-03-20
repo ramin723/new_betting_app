@@ -12,28 +12,35 @@ import jwt from 'jsonwebtoken'
 export class User extends Model<UserAttributes, UserModel> implements UserModel {
   public id!: number
   public username!: string
-  public telegram_id?: string
-  public email?: string
   public first_name?: string
   public last_name?: string
+  public email?: string
   public password!: string
-  public balance!: number
-  public wallet_address?: string
-  public isBlocked!: boolean
-  public total_referral_earnings!: number
   public role!: UserRole
+  public balance!: number
+  public avatar?: string
+  public commission?: number
+  public points?: number
+  public wallet_address?: string
+  public telegram_id?: string
+  public referral_user?: number
+  public total_referral_earnings!: number
+  public isBlocked!: boolean
   public readonly createdAt!: Date
   public readonly updatedAt!: Date
 
   /**
-   * مقایسه رمز عبور با هش ذخیره شده
+   * مقایسه رمز عبور
+   * @param password رمز عبور برای مقایسه
+   * @returns آیا رمز عبور صحیح است
    */
   public async comparePassword(password: string): Promise<boolean> {
     return bcrypt.compare(password, this.password)
   }
 
   /**
-   * تولید توکن احراز هویت
+   * تولید توکن برای کاربر
+   * @returns توکن تولید شده
    */
   public generateToken(): string {
     return jwt.sign(
@@ -65,10 +72,13 @@ export const initUser = (sequelize: Sequelize): void => {
           len: [3, 30],
         },
       },
-      telegram_id: {
+      first_name: {
         type: DataTypes.STRING,
         allowNull: true,
-        unique: true,
+      },
+      last_name: {
+        type: DataTypes.STRING,
+        allowNull: true,
       },
       email: {
         type: DataTypes.STRING,
@@ -78,26 +88,17 @@ export const initUser = (sequelize: Sequelize): void => {
           isEmail: true,
         },
       },
-      first_name: {
-        type: DataTypes.STRING,
-        allowNull: true,
-        validate: {
-          len: [2, 50],
-        },
-      },
-      last_name: {
-        type: DataTypes.STRING,
-        allowNull: true,
-        validate: {
-          len: [2, 50],
-        },
-      },
       password: {
         type: DataTypes.STRING,
         allowNull: false,
         validate: {
-          len: [8, 100],
+          len: [SECURITY.MIN_PASSWORD_LENGTH, 100],
         },
+      },
+      role: {
+        type: DataTypes.ENUM(...Object.values(USER_ROLES)),
+        allowNull: false,
+        defaultValue: USER_ROLES.USER,
       },
       balance: {
         type: DataTypes.DECIMAL(10, 2),
@@ -107,28 +108,55 @@ export const initUser = (sequelize: Sequelize): void => {
           min: 0,
         },
       },
-      wallet_address: {
+      avatar: {
         type: DataTypes.STRING,
         allowNull: true,
-        unique: true,
       },
-      isBlocked: {
-        type: DataTypes.BOOLEAN,
-        allowNull: false,
-        defaultValue: false,
+      commission: {
+        type: DataTypes.DECIMAL(5, 2),
+        allowNull: true,
+        validate: {
+          min: 0,
+          max: 100,
+        },
       },
-      total_referral_earnings: {
-        type: DataTypes.DECIMAL(10, 2),
-        allowNull: false,
+      points: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
         defaultValue: 0,
         validate: {
           min: 0,
         },
       },
-      role: {
-        type: DataTypes.ENUM(...Object.values(USER_ROLES)),
+      wallet_address: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        validate: {
+          isAlphanumeric: true,
+        },
+      },
+      telegram_id: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        unique: true,
+      },
+      referral_user: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        references: {
+          model: 'users',
+          key: 'id'
+        }
+      },
+      total_referral_earnings: {
+        type: DataTypes.DECIMAL(10, 2),
         allowNull: false,
-        defaultValue: USER_ROLES.USER,
+        defaultValue: 0,
+      },
+      isBlocked: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
       },
       createdAt: {
         type: DataTypes.DATE,
@@ -158,21 +186,21 @@ export const initUser = (sequelize: Sequelize): void => {
           fields: ['telegram_id'],
         },
         {
-          unique: true,
-          fields: ['wallet_address'],
+          fields: ['role'],
+        },
+        {
+          fields: ['referral_user'],
         },
       ],
       hooks: {
         beforeCreate: async (user: User): Promise<void> => {
           if (user.password) {
-            const salt = await bcrypt.genSalt(10)
-            user.password = await bcrypt.hash(user.password, salt)
+            user.password = await bcrypt.hash(user.password, 10)
           }
         },
         beforeUpdate: async (user: User): Promise<void> => {
           if (user.changed('password')) {
-            const salt = await bcrypt.genSalt(10)
-            user.password = await bcrypt.hash(user.password, salt)
+            user.password = await bcrypt.hash(user.password, 10)
           }
         },
       },

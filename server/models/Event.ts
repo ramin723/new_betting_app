@@ -1,7 +1,10 @@
-import { Model, DataTypes, Sequelize } from 'sequelize';
+import { Model, DataTypes, Sequelize, Op } from 'sequelize';
 import { EVENT_STATUS, EVENT_TYPES, COMMISSIONS } from '../constants/constants';
 import type { EventAttributes, EventModel } from './types/EventInterface';
 import type { BetModel } from './types/BetInterface';
+import { User } from './User';
+import { Bet } from './Bet';
+import { Option } from './Option';
 
 export class Event extends Model<EventAttributes, EventModel> implements EventModel {
   public id!: number;
@@ -21,6 +24,7 @@ export class Event extends Model<EventAttributes, EventModel> implements EventMo
   public total_pool!: number;
   public commission_creator!: number;
   public commission_referral!: number;
+  public platform_commission!: number;
   public is_featured!: boolean;
   public template_id?: number;
   public readonly createdAt!: Date;
@@ -45,21 +49,110 @@ export class Event extends Model<EventAttributes, EventModel> implements EventMo
     return this.isActive() && new Date() < this.betting_deadline;
   }
 
+  /**
+   * محاسبه کمیسیون‌های رویداد
+   * @returns آبجکت حاوی مقادیر کمیسیون‌ها
+   */
+  public async calculateCommissions(): Promise<{
+    creatorCommission: number;
+    referralCommission: number;
+    platformCommission: number;
+  }> {
+    try {
+      // دریافت تمام شرط‌های رویداد
+      const bets = await this.getBets();
+      
+      // محاسبه کل استخر
+      const totalPool = bets.reduce((sum, bet) => sum + bet.bet_amount, 0);
+      
+      // محاسبه کمیسیون سازنده (3% از کل استخر)
+      const creatorCommission = totalPool * COMMISSIONS.CREATOR;
+      
+      // محاسبه مجموع شرط‌های کاربران دعوت شده
+      const referralBetsAmount = await this.calculateReferralBetsAmount();
+      
+      // محاسبه کمیسیون معرف‌ها (5% از مجموع شرط‌های کاربران دعوت شده)
+      const referralCommission = referralBetsAmount * COMMISSIONS.REFERRAL;
+      
+      // محاسبه کمیسیون پلتفرم (باقیمانده تا 15%)
+      const platformCommission = (totalPool * COMMISSIONS.TOTAL) - (creatorCommission + referralCommission);
+      
+      return {
+        creatorCommission,
+        referralCommission,
+        platformCommission
+      };
+    } catch (error) {
+      console.error('خطا در محاسبه کمیسیون‌ها:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * محاسبه مجموع شرط‌های کاربران دعوت شده
+   * @returns مجموع مبالغ شرط‌های کاربران دعوت شده
+   */
+  public async calculateReferralBetsAmount(): Promise<number> {
+    try {
+      const bets = await Bet.findAll({
+        where: { event_id: this.id },
+        include: [{
+          model: User,
+          where: {
+            referral_user: { [Op.not]: null }
+          }
+        }]
+      });
+      
+      return bets.reduce((sum, bet) => sum + bet.bet_amount, 0);
+    } catch (error) {
+      console.error('خطا در محاسبه مجموع شرط‌های کاربران دعوت شده:', error);
+      return 0;
+    }
+  }
+
+  /**
+   * به‌روزرسانی کل استخر و کمیسیون‌ها
+   */
   public async updateTotalPool(): Promise<void> {
-    const bets = await this.getBets();
-    this.total_pool = bets.reduce((sum: number, bet: BetModel) => sum + bet.bet_amount, 0);
-    await this.save();
+    try {
+      const bets = await this.getBets();
+      const totalPool = bets.reduce((sum, bet) => sum + bet.bet_amount, 0);
+      
+      const commissions = await this.calculateCommissions();
+      
+      await this.update({
+        total_pool: totalPool,
+        commission_creator: commissions.creatorCommission,
+        commission_referral: commissions.referralCommission,
+        platform_commission: commissions.platformCommission
+      });
+    } catch (error) {
+      console.error('خطا در به‌روزرسانی استخر:', error);
+      throw error;
+    }
   }
 
   // متدهای مربوط به روابط
+  /**
+   * دریافت تمام شرط‌های رویداد
+   */
   public async getBets(): Promise<BetModel[]> {
-    // این متد باید در زمان تعریف روابط پیاده‌سازی شود
-    return [];
+    return Bet.findAll({
+      where: { event_id: this.id }
+    });
   }
 
+  /**
+   * دریافت شرط‌های یک گزینه خاص
+   */
   public async getOptionBets(optionId: number): Promise<BetModel[]> {
-    // این متد باید در زمان تعریف روابط پیاده‌سازی شود
-    return [];
+    return Bet.findAll({
+      where: {
+        event_id: this.id,
+        option_id: optionId
+      }
+    });
   }
 }
 
@@ -163,6 +256,15 @@ export const initEvent = (sequelize: Sequelize): void => {
           max: 100,
         },
       },
+      platform_commission: {
+        type: DataTypes.DECIMAL(5, 2),
+        allowNull: false,
+        defaultValue: COMMISSIONS.PLATFORM_MIN,
+        validate: {
+          min: 0,
+          max: 100,
+        },
+      },
       is_featured: {
         type: DataTypes.BOOLEAN,
         allowNull: false,
@@ -214,6 +316,9 @@ export const initEvent = (sequelize: Sequelize): void => {
           }
           if (!event.commission_referral) {
             event.commission_referral = COMMISSIONS.REFERRAL;
+          }
+          if (!event.platform_commission) {
+            event.platform_commission = COMMISSIONS.PLATFORM_MIN;
           }
         },
       },

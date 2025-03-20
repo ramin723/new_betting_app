@@ -12,7 +12,7 @@ export interface UserAttributes {
   wallet_address?: string;
   isBlocked: boolean;
   total_referral_earnings: number;
-  role: 'admin' | 'user';
+  role: 'admin' | 'user' | 'moderator';
   avatar?: string;
   commission?: number;
   points?: number;

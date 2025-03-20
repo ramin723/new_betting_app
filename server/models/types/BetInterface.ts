@@ -13,15 +13,22 @@ export interface BetAttributes {
   bet_amount: number
   status: BetStatus
   potential_win_amount: number
+  referral_id?: number
   createdAt: Date
   updatedAt: Date
 }
 
-export interface BetModel extends Model<BetAttributes>, BetAttributes {
+export interface BetCreationAttributes extends Omit<BetAttributes, 'id' | 'createdAt' | 'updatedAt'> {
+  status?: BetStatus
+  potential_win_amount?: number
+}
+
+export interface BetModel extends Model<BetAttributes, BetCreationAttributes>, BetAttributes {
   getUser(): Promise<UserModel>
   getEvent(): Promise<EventModel>
   isWinnable(): boolean
   calculateWinnings(): Promise<number>
+  payCommissions(winAmount: number): Promise<void>
 }
 
 // تعریف نوع برای داده‌های ورودی
@@ -30,6 +37,7 @@ export interface CreateBetInput {
   event_id: number
   option_id: number
   bet_amount: number
+  referral_id?: number
 }
 
 // تعریف نوع برای داده‌های به‌روزرسانی

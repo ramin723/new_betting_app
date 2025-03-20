@@ -10,4 +10,6 @@ export const SECURITY = {
   MAX_PASSWORD_LENGTH: 100,
   MIN_USERNAME_LENGTH: 3,
   MAX_USERNAME_LENGTH: 30
-} as const; 
+} as const;
+
+export * from './wallet'; 

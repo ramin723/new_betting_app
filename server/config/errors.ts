@@ -1,0 +1,61 @@
+export class AppError extends Error {
+  constructor(
+    public statusCode: number,
+    override message: string,
+    public code?: string,
+    public data?: any
+  ) {
+    super(message);
+    this.name = 'AppError';
+  }
+}
+
+export const ErrorCodes = {
+  // خطاهای احراز هویت
+  AUTH: {
+    UNAUTHORIZED: 'AUTH_UNAUTHORIZED',
+    FORBIDDEN: 'AUTH_FORBIDDEN',
+    INVALID_TOKEN: 'AUTH_INVALID_TOKEN',
+    TOKEN_EXPIRED: 'AUTH_TOKEN_EXPIRED',
+    INVALID_CREDENTIALS: 'AUTH_INVALID_CREDENTIALS'
+  },
+
+  // خطاهای کاربر
+  USER: {
+    NOT_FOUND: 'USER_NOT_FOUND',
+    ALREADY_EXISTS: 'USER_ALREADY_EXISTS',
+    INVALID_INPUT: 'USER_INVALID_INPUT',
+    INSUFFICIENT_BALANCE: 'USER_INSUFFICIENT_BALANCE'
+  },
+
+  // خطاهای رویداد
+  EVENT: {
+    NOT_FOUND: 'EVENT_NOT_FOUND',
+    ALREADY_EXISTS: 'EVENT_ALREADY_EXISTS',
+    INVALID_INPUT: 'EVENT_INVALID_INPUT',
+    EXPIRED: 'EVENT_EXPIRED',
+    CANCELLED: 'EVENT_CANCELLED'
+  },
+
+  // خطاهای شرط
+  BET: {
+    NOT_FOUND: 'BET_NOT_FOUND',
+    INVALID_INPUT: 'BET_INVALID_INPUT',
+    ALREADY_PLACED: 'BET_ALREADY_PLACED',
+    EVENT_EXPIRED: 'BET_EVENT_EXPIRED'
+  },
+
+  // خطاهای کیف پول
+  WALLET: {
+    INSUFFICIENT_BALANCE: 'WALLET_INSUFFICIENT_BALANCE',
+    INVALID_TRANSACTION: 'WALLET_INVALID_TRANSACTION',
+    TRANSACTION_FAILED: 'WALLET_TRANSACTION_FAILED'
+  },
+
+  // خطاهای سرور
+  SERVER: {
+    INTERNAL_ERROR: 'SERVER_INTERNAL_ERROR',
+    SERVICE_UNAVAILABLE: 'SERVER_SERVICE_UNAVAILABLE',
+    RATE_LIMIT_EXCEEDED: 'SERVER_RATE_LIMIT_EXCEEDED'
+  }
+}; 
